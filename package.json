@@ -7,7 +7,11 @@
     "build": "vue-cli-service build"
   },
   "dependencies": {
-    "vue": "^2.6.10"
+    "@better-scroll/core": "^2.0.0-beta.2",
+    "ant-design-vue": "^1.4.0",
+    "meskil-ts-axios": "^0.0.3",
+    "vue": "^2.6.10",
+    "vuex": "^3.1.1"
   },
   "devDependencies": {
     "@vue/cli-service": "^4.0.0",

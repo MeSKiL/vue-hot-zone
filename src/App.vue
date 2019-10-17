@@ -1,28 +1,39 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
-  </div>
+    <div id="app">
+        <hot-zone />
+    </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+    import HotZone from './components/HotZone';
 
-export default {
-  name: 'app',
-  components: {
-    HelloWorld
-  }
-}
+    export default {
+        name: 'app',
+        components: {
+            HotZone
+        },
+        created() {
+            if (sessionStorage.getItem('store')) {
+                this.$store.replaceState(
+                    Object.assign(
+                        {},
+                        this.$store.state,
+                        JSON.parse(sessionStorage.getItem('store'))
+                    )
+                )
+            }
+            // 在页面刷新时将vuex里的信息保存到sessionStorage里
+            window.addEventListener('beforeunload', () => {
+                sessionStorage.setItem('store', JSON.stringify(this.$store.state))
+            })
+        }
+    }
 </script>
 
 <style lang="less">
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+    #app {
+        width:100%;
+        height:100%;
+
+    }
 </style>
