@@ -22,18 +22,25 @@
         </modal>
         <div class="content">
             <div style="border: 2px solid black">
-                <Scroll class="phone" ref="phone" :probeType="3" :listen-scroll="true" @scroll="scroll">
-                    <div ref="dom" style="position: relative">
+                <Scroll class="phone" ref="phone" :class="{write:write}" :probeType="3" :listen-scroll="true"
+                        @scroll="scroll">
+                    <div ref="dom" style="position: relative" @mousemove="__mouseMove" @mouseup="__mouseMoveEnd">
                         <img v-for="item in fileList" class="image-src" :src="item.thumbUrl" />
-                        <div class="hot-zone" v-for="(item,index) in innerZoneList" :key="index"
+                        <div @mousedown="_moveZoneStart(item)"
+                             class="hot-zone inner-zone"
+                             v-for="(item,index) in innerZoneList" :key="index"
                              :style="{
-                         top:item.top+'px',
-                         left:item.left+'px',
-                         width:item.width+'px',
-                         height:item.height+'px'}">
-                            >
+                                 top:item.top+'px',
+                                 left:item.left+'px',
+                                 width:item.width+'px',
+                                 height:item.height+'px'
+                             }"
+                        >
+                            <div class="dot" v-for="dot in dots" :class="dot" @mousedown="_resizeZoneStart(dot,item,$event)" ></div>
                         </div>
                     </div>
+
+                    <!--画布-->
                     <div class="canvas" v-show="write" @mousedown="mouseStart" @mouseup="mouseEnd"
                          @mousemove="mouseMove">
                         <div class="hot-zone" v-for="(item,index) in hotZoneList" :key="index"
@@ -50,8 +57,9 @@
                 </Scroll>
             </div>
             <div class="action">
-                <a-button @click="_handleClick" :type="primary">{{write?'确定':'设置'}}</a-button>
-                <a-button @click="_handleClean">重置热区</a-button>
+                <a-button class="action-button" @click="_handleClick" :type="primary">{{write?'确定':'设置热区'}}</a-button>
+                <a-button class="action-button" @click="_handleClean">重置热区</a-button>
+                <div class="bug-button action-button" @click="_handleBug">bug处理</div>
             </div>
         </div>
     </div>
@@ -65,7 +73,7 @@
     import Icon from 'ant-design-vue/lib/icon'
     import {mapMutations, mapGetters} from 'vuex'
     import Scroll from './scroll'
-    // import
+    import createZone, {Zone} from '../common/js/zone'
 
     export default {
         name: "HotZone",
@@ -92,6 +100,8 @@
             this.type = 'rb'; // 划热区的时候有四种状态 rb rt lb lt
             this.phoneWidth = 0;
             this.phoneHeight = 0;
+            this.changeItem = null;
+            this.dots = ["lt","mt","rt","lm","rm","lb","mb","rb"];
         },
         mounted() {
             this.phoneWidth = this.$refs.phone.$el.offsetWidth;
@@ -103,20 +113,21 @@
                 setZoneList: 'SET_ZONE',
                 cleanZone: 'CLEAN_ZONE'
             }),
+
+            // 监听 模拟手机的滚动
             scroll(val) {
                 this.scrollY = val.y;
             },
+
+            // 画画事件
             mouseStart(e) {
                 this.type = 'rb'
                 if (!this.write) return;
                 this.touch = true;
-                console.log('mouseStart', e);
-                this.hotZoneList.push({
+                this.hotZoneList.push(createZone({
                     top: e.layerY,
                     left: e.layerX,
-                    width: 0,
-                    height: 0
-                })
+                }))
             },
             mouseMove(e) {
                 if (this.touch) {
@@ -138,17 +149,26 @@
                 this.touch = false;
             },
 
+            // 上传图片事件
+            // 删除
             handleCancel() {
                 this.previewVisible = false;
             },
+            // 预览
             handlePreview(file) {
                 this.previewImage = file.url || file.thumbUrl;
                 this.previewVisible = true;
             },
+            // 图片change事件
             handleChange({fileList}) {
                 this.setFileList(fileList);
                 this.$forceUpdate();
             },
+
+
+
+            // 操作栏事件
+            // 设置
             _handleClick() {
                 this.write = !this.write;
                 if (this.write) { // 可写就不能动
@@ -163,20 +183,35 @@
                             console.log(this.phoneWidth, item.right, item.width)
                             item.left = this.phoneWidth - item.right - item.width
                         }
-                        return item
+                        return createZone(item)
                     }));
                     this.hotZoneList = [];
                     console.log(this.innerZoneList);
                     this.$refs.phone.enable()
                 }
             },
+
+            // 重置热区
             _handleClean() {
                 this.cleanZone();
             },
+
+            _handleBug() { // 处理操作dom的bug
+                this.$refs.phone.enable();
+                this.changeItem = null;
+                this.innerZoneList.forEach(item => {
+                    item.move = false;
+                    item.resizeType = ''
+                });
+            },
+
+
+            // 不同方向的创建热区,在画板操作，与底图无关
             _rbMove(e, zone) {
-                console.log('_rb');
+                console.log('_rb',e.layerX,e.layerY);
                 let width = e.layerX - zone.left;
                 let height = e.layerY - zone.top;
+                console.log(width,height)
                 if (width < 0) {
                     // r-l
                     this.type = 'lb';
@@ -250,6 +285,7 @@
                 zone.width = width;
                 zone.height = height;
             },
+
             __rtol(zone) {
                 zone.right = this.phoneWidth - zone.left;
                 zone.left = null;
@@ -265,6 +301,59 @@
             __ttob(zone) {
                 zone.top = this.phoneHeight - zone.bottom;
                 zone.bottom = null;
+            },
+
+            __mouseMove(e){ // 监听全图的鼠标移动，可能是改变大小，也可能是移动
+                const item = this.changeItem;
+                this._moveZoneMove(e,item); // 区域移动
+                this._resizeZoneMove(e,item); // 改变区域大小
+            },
+            __mouseMoveEnd(){ // 监听全图的鼠标抬起，可能是鼠标移动结束，也可能是改变大小结束
+                const item = this.changeItem;
+                if(item){
+                    this._moveZoneEnd(item);
+                    this._resizeZoneEnd(item);
+                }
+                this.changeItem = null;
+                this.$refs.phone.enable();
+            },
+
+            _moveZoneStart(item) { // 按下热区
+                this.changeItem = item;
+                item.move = true;
+                item.resizeType = '';
+                this.$refs.phone.disable()
+            },
+            _moveZoneMove(e,item) { // 移动热区
+                if (item && item.move) {
+                    if (item.movePos) {
+                        item.movePos(e.movementX, e.movementY)
+                    } else {
+                        Zone.prototype.movePos.call(item, e.movementX, e.movementY)
+                    }
+                }
+            },
+            _moveZoneEnd(item) { // 移动完成
+                item.move = false;
+            },
+            _resizeZoneStart(dot,item,e){
+                e.stopPropagation();
+                this.changeItem = item;
+                item.resizeType = dot;
+                item.move = false;
+                this.$refs.phone.disable()
+            },
+            _resizeZoneMove(e,item){
+                if(item&&item.resizeType){
+                    if(item.resize){
+                        item.resize(e.movementX,e.movementY)
+                    }else{
+                        Zone.prototype.resize.call(item,e.movementX,e.movementY)
+                    }
+                }
+            },
+            _resizeZoneEnd(item){ //改变大小完成
+                item.resizeType = '';
             }
         }
     }
@@ -301,8 +390,79 @@
 
                 .hot-zone {
                     position: absolute;
-                    background-color: black;
-                    opacity: 0.5;
+                    background-color: rgba(0, 0, 0, 0.3);
+                }
+
+                .inner-zone {
+                    .dot {
+                        position: absolute;
+                        width: 6px;
+                        height: 6px;
+                        background-color: black;
+                        border-radius: 50%;
+                    }
+
+                    &:hover {
+                        cursor: move;
+                    }
+
+                    .lt {
+                        &:hover{
+                            cursor: se-resize;
+                        }
+                    }
+
+                    .mt {
+                        left: calc(50% - 3px);
+                        &:hover{
+                            cursor: s-resize;
+                        }
+                    }
+
+                    .rt {
+                        right: 0;
+                        &:hover{
+                            cursor: ne-resize;
+                        }
+                    }
+
+                    .lm {
+                        top: calc(50% - 3px);
+                        &:hover{
+                            cursor: w-resize;
+                        }
+                    }
+
+                    .rm {
+                        top: calc(50% - 3px);
+                        right: 0;
+                        &:hover{
+                            cursor: w-resize;
+                        }
+                    }
+
+                    .lb {
+                        bottom: 0;
+                        &:hover{
+                            cursor: ne-resize;
+                        }
+                    }
+
+                    .mb {
+                        bottom: 0;
+                        left: calc(50% - 3px);
+                        &:hover{
+                            cursor: s-resize;
+                        }
+                    }
+
+                    .rb {
+                        bottom: 0;
+                        right: 0;
+                        &:hover{
+                            cursor: se-resize;
+                        }
+                    }
                 }
 
                 .canvas {
@@ -312,17 +472,42 @@
                     width: 100%;
                     height: 100%;
                     z-index: 5;
-
-
                 }
 
                 .image-src {
                     width: 100%;
+                    user-select: none;
                 }
+
+
+            }
+
+            .write:hover {
+                cursor: crosshair;
             }
 
             .action {
+                display: flex;
+                flex-direction: column;
                 margin-left: 100px;
+
+                .bug-button {
+                    padding: 5px 10px;
+                    border: 1px solid red;
+                    color: red;
+                    border-radius: 5px;
+                    text-align: center;
+
+                    &:hover {
+                        color: #40a9ff;
+                        border-color: #40a9ff;
+                        cursor: pointer;
+                    }
+                }
+
+                .action-button {
+                    margin-bottom: 10px;
+                }
             }
         }
     }
