@@ -1,5 +1,5 @@
 <template>
-    <div ref="wrapper">
+    <div ref="wrapper" style="position: relative">
         <slot />
     </div>
 </template>
@@ -25,7 +25,7 @@
             listenScroll: {
                 type: Boolean,
                 default: false
-            }
+            },
         },
         mounted () {
             setTimeout(() => {
@@ -39,8 +39,9 @@
                 }
                 this.scroll = new BScroll(this.$refs.wrapper, {
                     probeType: this.probeType,
-                    click: this.click
-                })
+                    click: this.click,
+                    scrollbar:true,
+                });
 
                 if (this.listenScroll) {
                     let me = this // this.scroll.on的回调里，会把this.变成scroll对象
@@ -76,5 +77,9 @@
 </script>
 
 <style scoped>
-
+    .zone{
+        position: absolute;
+        background-color: black;
+        opacity: 0.5;
+    }
 </style>
