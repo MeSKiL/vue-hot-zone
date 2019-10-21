@@ -9,6 +9,8 @@ const debug = process.env.NODE_ENV !== 'production';
 const SET_FILE = 'SET_FILE';
 const SET_ZONE = 'SET_ZONE';
 const CLEAN_ZONE = 'CLEAN_ZONE';
+const SET_ZONE_URL_AND_REMARK  = 'SET_ZONE_URL_AND_REMARK';
+const DELETE_ZONE = 'DELETE_ZONE';
 
 export default new Vuex.Store({
     state: {
@@ -25,6 +27,22 @@ export default new Vuex.Store({
         [CLEAN_ZONE](state) {
             state.innerZoneList = []
         },
+        [SET_ZONE_URL_AND_REMARK](state,options){
+            let obj = state.innerZoneList[findItem(state.innerZoneList,options)];
+            if(obj){
+                obj.url = options.url;
+                obj.remark = options.remark
+            }else{
+                state.innerZoneList.push(options)
+            }
+        },
+        [DELETE_ZONE](state,options){
+            console.log(options.zoneId)
+            let idx = findItem(state.innerZoneList,options);
+            console.log(idx)
+            if(idx<0) return;
+            state.innerZoneList.splice(findItem(state.innerZoneList,options),1)
+        }
     },
     getters: {
         fileList: state => state.fileList,
@@ -33,3 +51,9 @@ export default new Vuex.Store({
     actions: {},
     plugins: debug ? [createLogger()] : []
 })
+
+const findItem = (list,options) => {
+    return list.findIndex(item => {
+        return item.zoneId === options.zoneId
+    })
+};

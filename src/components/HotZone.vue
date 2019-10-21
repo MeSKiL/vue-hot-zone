@@ -27,6 +27,7 @@
                     <div ref="dom" style="position: relative" @mousemove="__mouseMove" @mouseup="__mouseMoveEnd">
                         <img v-for="item in fileList" class="image-src" :src="item.thumbUrl" />
                         <div @mousedown="_moveZoneStart(item)"
+                             @mouseup="_zoneClick(item)"
                              class="hot-zone inner-zone"
                              v-for="(item,index) in innerZoneList" :key="index"
                              :style="{
@@ -36,7 +37,9 @@
                                  height:item.height+'px'
                              }"
                         >
-                            <div class="dot" v-for="dot in dots" :class="dot" @mousedown="_resizeZoneStart(dot,item,$event)" ></div>
+                            <div class="dot" v-for="dot in dots" :class="dot"
+                                 @mousedown="_resizeZoneStart(dot,item,$event)"></div>
+                            <p style="color:#fff;font-size: 16px;margin:unset">{{item.remark}}</p>
                         </div>
                     </div>
 
@@ -57,13 +60,17 @@
                 </Scroll>
             </div>
             <div class="action">
-                <a-button class="action-button" @click="_handleClick" :type="primary">{{write?'确定':'设置热区'}}</a-button>
+                <a-button class="action-button" @click="_handleClick" :type="primary">{{write?'确定':'绘制热区'}}</a-button>
                 <a-button class="action-button" @click="_handleClean">重置热区</a-button>
                 <div class="bug-button action-button" @click="_handleBug">bug处理</div>
+                <a-button type="primary" class="action-button" @click="submit">提交</a-button>
             </div>
         </div>
+        <m-drawer v-if="drawerData" @drawerEvent="_drawerEvent" :data-prop="drawerData"></m-drawer>
+        <modal title="文章标题" v-model="showModal" @ok="_handleOk">
+            <a-input placeholder="请输入文章标题" v-model="title"/>
+        </modal>
     </div>
-
 </template>
 
 <script>
@@ -74,11 +81,14 @@
     import {mapMutations, mapGetters} from 'vuex'
     import Scroll from './scroll'
     import createZone, {Zone} from '../common/js/zone'
+    import MDrawer from './drawer'
+    import {getHTML} from '../common/js/template'
+    import AInput from 'ant-design-vue/lib/input'
 
     export default {
         name: "HotZone",
         components: {
-            AButton, Upload, Modal, Icon, Scroll
+            AButton, Upload, Modal, Icon, Scroll, MDrawer,AInput
         },
         data() {
             return {
@@ -86,6 +96,9 @@
                 previewImage: '',
                 write: false,
                 hotZoneList: [],
+                drawerData: null, // 抽屉数据
+                showModal:false, // 填标题框
+                title:'' // html标题
             }
         },
         computed: {
@@ -100,8 +113,12 @@
             this.type = 'rb'; // 划热区的时候有四种状态 rb rt lb lt
             this.phoneWidth = 0;
             this.phoneHeight = 0;
-            this.changeItem = null;
-            this.dots = ["lt","mt","rt","lm","rm","lb","mb","rb"];
+            this.changeItem = null; // 正在修改的item
+            this.dots = ["lt", "mt", "rt", "lm", "rm", "lb", "mb", "rb"];
+            this.firstTime = 0; // 点击事件
+            this.lastTime = 0; // 点击事件
+            this.PHONE_LEFT = 0;
+            this.PHONE_TOP = 0;
         },
         mounted() {
             this.phoneWidth = this.$refs.phone.$el.offsetWidth;
@@ -111,7 +128,9 @@
             ...mapMutations({
                 setFileList: 'SET_FILE',
                 setZoneList: 'SET_ZONE',
-                cleanZone: 'CLEAN_ZONE'
+                cleanZone: 'CLEAN_ZONE',
+                setUrlAndRemark: 'SET_ZONE_URL_AND_REMARK',
+                deleteZone: 'DELETE_ZONE'
             }),
 
             // 监听 模拟手机的滚动
@@ -121,7 +140,11 @@
 
             // 画画事件
             mouseStart(e) {
-                this.type = 'rb'
+                this.PHONE_LEFT = this.$refs.phone.$el.offsetLeft - document.documentElement.scrollLeft;
+                this.PHONE_TOP = this.$refs.phone.$el.offsetTop - document.documentElement.scrollTop;
+                // 点击的时候要重新计算手机距离上方与左方的距离
+                console.log(this.PHONE_TOP)
+                this.type = 'rb';
                 if (!this.write) return;
                 this.touch = true;
                 this.hotZoneList.push(createZone({
@@ -147,6 +170,8 @@
             mouseEnd(e) {
                 if (!this.write) return;
                 this.touch = false;
+                this._handleClick();
+                this.__drawerOpen(this.innerZoneList[this.innerZoneList.length - 1]);
             },
 
             // 上传图片事件
@@ -166,14 +191,13 @@
             },
 
 
-
             // 操作栏事件
             // 设置
             _handleClick() {
                 this.write = !this.write;
                 if (this.write) { // 可写就不能动
                     this.$refs.phone.disable()
-                } else {
+                } else { // 按理说没必要 todo
                     this.setZoneList(this.hotZoneList.map(item => {
                         if (!item.top) {
                             item.top = this.phoneHeight - item.bottom - item.height
@@ -205,13 +229,19 @@
                 });
             },
 
+            submit() {
+                this.showModal = true
+            },
+
+            _handleOk(){
+                this.showModal = false
+                getHTML(this.fileList, this.innerZoneList,this.title)
+            },
 
             // 不同方向的创建热区,在画板操作，与底图无关
             _rbMove(e, zone) {
-                console.log('_rb',e.layerX,e.layerY);
-                let width = e.layerX - zone.left;
-                let height = e.layerY - zone.top;
-                console.log(width,height)
+                let width = e.clientX - this.PHONE_LEFT - zone.left;
+                let height = e.clientY - this.PHONE_TOP - zone.top;
                 if (width < 0) {
                     // r-l
                     this.type = 'lb';
@@ -228,9 +258,8 @@
                 zone.height = height;
             },
             _rtMove(e, zone) {
-                console.log('_rt');
-                let width = e.layerX - zone.left;
-                let height = this.phoneHeight - zone.bottom - e.layerY;
+                let width = e.clientX - this.PHONE_LEFT - zone.left;
+                let height = this.phoneHeight - zone.bottom - (e.clientY - this.PHONE_TOP);
                 if (width < 0) {
                     this.type = 'lt';
                     // r-l
@@ -247,9 +276,8 @@
                 zone.height = height;
             },
             _lbMove(e, zone) {
-                console.log('_lb');
-                let width = this.phoneWidth - zone.right - e.layerX;
-                let height = e.layerY - zone.top;
+                let width = this.phoneWidth - zone.right - (e.clientX - this.PHONE_LEFT);
+                let height = (e.clientY - this.PHONE_TOP) - zone.top;
                 if (width < 0) {
                     this.type = 'rb';
                     // l-r
@@ -266,9 +294,8 @@
                 zone.height = height;
             },
             _ltMove(e, zone) {
-                console.log('_lt');
-                let width = this.phoneWidth - zone.right - e.layerX;
-                let height = this.phoneHeight - zone.bottom - e.layerY;
+                let width = this.phoneWidth - zone.right - (e.clientX - this.PHONE_LEFT);
+                let height = this.phoneHeight - zone.bottom - (e.clientY - this.PHONE_TOP);
                 // console.log(width, height);
                 if (width < 0) {
                     this.type = 'rt';
@@ -303,14 +330,14 @@
                 zone.bottom = null;
             },
 
-            __mouseMove(e){ // 监听全图的鼠标移动，可能是改变大小，也可能是移动
+            __mouseMove(e) { // 监听全图的鼠标移动，可能是改变大小，也可能是移动
                 const item = this.changeItem;
-                this._moveZoneMove(e,item); // 区域移动
-                this._resizeZoneMove(e,item); // 改变区域大小
+                this._moveZoneMove(e, item); // 区域移动
+                this._resizeZoneMove(e, item); // 改变区域大小
             },
-            __mouseMoveEnd(){ // 监听全图的鼠标抬起，可能是鼠标移动结束，也可能是改变大小结束
+            __mouseMoveEnd() { // 监听全图的鼠标抬起，可能是鼠标移动结束，也可能是改变大小结束
                 const item = this.changeItem;
-                if(item){
+                if (item) {
                     this._moveZoneEnd(item);
                     this._resizeZoneEnd(item);
                 }
@@ -322,9 +349,20 @@
                 this.changeItem = item;
                 item.move = true;
                 item.resizeType = '';
-                this.$refs.phone.disable()
+                this.$refs.phone.disable();
+                this.firstTime = (new Date()).getTime();
             },
-            _moveZoneMove(e,item) { // 移动热区
+            _zoneClick(item) { // 点击热区
+                this.lastTime = (new Date()).getTime();
+                const clickTime = this.lastTime - this.firstTime;
+                if (clickTime <= 200) {
+                    this.__zoneClickEvent(item); // 热区点击事件
+                }
+            },
+            __zoneClickEvent(item) {
+                this._drawerEvent('open', item);
+            },
+            _moveZoneMove(e, item) { // 移动热区
                 if (item && item.move) {
                     if (item.movePos) {
                         item.movePos(e.movementX, e.movementY)
@@ -336,24 +374,60 @@
             _moveZoneEnd(item) { // 移动完成
                 item.move = false;
             },
-            _resizeZoneStart(dot,item,e){
+            _resizeZoneStart(dot, item, e) {
                 e.stopPropagation();
                 this.changeItem = item;
                 item.resizeType = dot;
                 item.move = false;
                 this.$refs.phone.disable()
             },
-            _resizeZoneMove(e,item){
-                if(item&&item.resizeType){
-                    if(item.resize){
-                        item.resize(e.movementX,e.movementY)
-                    }else{
-                        Zone.prototype.resize.call(item,e.movementX,e.movementY)
+            _resizeZoneMove(e, item) {
+                if (item && item.resizeType) {
+                    if (item.resize) {
+                        item.resize(e.movementX, e.movementY)
+                    } else {
+                        Zone.prototype.resize.call(item, e.movementX, e.movementY)
                     }
                 }
             },
-            _resizeZoneEnd(item){ //改变大小完成
+            _resizeZoneEnd(item) { //改变大小完成
                 item.resizeType = '';
+            },
+
+            // 抽屉
+            _drawerEvent(action, arg) { // 抽屉事件
+                if (action === 'close') { // 关闭抽屉
+                    this.__drawerClose()
+                }
+                if (action === 'open') { // 打开抽屉
+                    this.__drawerOpen(arg)
+                }
+                if (action === 'confirm') { // 确认
+                    this.__drawerConfirm(arg)
+                }
+                if (action === 'cancel') { // 取消
+                    this.__drawerCancel()
+                }
+                if (action === 'delete') { // 删除热区
+                    this.__drawerDelete(arg);
+                }
+            },
+            __drawerOpen(arg) {
+                this.drawerData = arg
+            },
+            __drawerClose() {
+                this.drawerData = null
+            },
+            __drawerConfirm(arg) {
+                this.setUrlAndRemark(arg);
+                this.drawerData = null
+            },
+            __drawerCancel() {
+                this.drawerData = null;
+            },
+            __drawerDelete(arg) {
+                this.deleteZone(arg);
+                this.drawerData = null;
             }
         }
     }
@@ -394,6 +468,10 @@
                 }
 
                 .inner-zone {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+
                     .dot {
                         position: absolute;
                         width: 6px;
@@ -407,28 +485,37 @@
                     }
 
                     .lt {
-                        &:hover{
+                        left: 0;
+                        top: 0;
+
+                        &:hover {
                             cursor: se-resize;
                         }
                     }
 
                     .mt {
+                        top: 0;
                         left: calc(50% - 3px);
-                        &:hover{
+
+                        &:hover {
                             cursor: s-resize;
                         }
                     }
 
                     .rt {
+                        top: 0;
                         right: 0;
-                        &:hover{
+
+                        &:hover {
                             cursor: ne-resize;
                         }
                     }
 
                     .lm {
+                        left: 0;
                         top: calc(50% - 3px);
-                        &:hover{
+
+                        &:hover {
                             cursor: w-resize;
                         }
                     }
@@ -436,14 +523,17 @@
                     .rm {
                         top: calc(50% - 3px);
                         right: 0;
-                        &:hover{
+
+                        &:hover {
                             cursor: w-resize;
                         }
                     }
 
                     .lb {
+                        left: 0;
                         bottom: 0;
-                        &:hover{
+
+                        &:hover {
                             cursor: ne-resize;
                         }
                     }
@@ -451,7 +541,8 @@
                     .mb {
                         bottom: 0;
                         left: calc(50% - 3px);
-                        &:hover{
+
+                        &:hover {
                             cursor: s-resize;
                         }
                     }
@@ -459,7 +550,8 @@
                     .rb {
                         bottom: 0;
                         right: 0;
-                        &:hover{
+
+                        &:hover {
                             cursor: se-resize;
                         }
                     }
@@ -521,6 +613,5 @@
         margin-top: 8px;
         color: #666;
     }
-
 
 </style>

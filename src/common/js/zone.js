@@ -1,5 +1,5 @@
 export class Zone {
-    constructor({left, top, right = null, bottom = null, width = 0, height = 0, url = ''}) {
+    constructor({zoneId,left, top, right = null, bottom = null, width = 0, height = 0, url = '',remark=''}) {
         this.left = left;
         this.top = top;
         this.right = right;
@@ -8,7 +8,9 @@ export class Zone {
         this.height = height;
         this.url = url;
         this.move = false;
-        this.resizeType = ''
+        this.resizeType = '';
+        this.zoneId = Math.random(1)*100000000|1;
+        this.remark = ''
     }
 
     movePos(left, top) {
