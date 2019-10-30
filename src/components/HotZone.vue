@@ -235,6 +235,7 @@
 
             _handleOk(){
                 this.showModal = false
+                console.log(this.fileList)
                 getHTML(this.fileList, this.innerZoneList,this.title)
             },
 
@@ -419,6 +420,7 @@
                 this.drawerData = null
             },
             __drawerConfirm(arg) {
+                console.log(arg)
                 this.setUrlAndRemark(arg);
                 this.drawerData = null
             },

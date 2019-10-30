@@ -31,7 +31,8 @@ export default new Vuex.Store({
             let obj = state.innerZoneList[findItem(state.innerZoneList,options)];
             if(obj){
                 obj.url = options.url;
-                obj.remark = options.remark
+                obj.remark = options.remark;
+                obj.other = options.other;
             }else{
                 state.innerZoneList.push(options)
             }

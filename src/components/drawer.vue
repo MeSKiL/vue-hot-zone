@@ -9,7 +9,8 @@
                 width="400"
         >
             <div class="drawer-content">
-                <div class="action-item">
+                <div class="action-item" v-if="!dataProp.other">
+                    <!--有其他属性的热区不可修改-->
                     <p class="title">url</p>
                     <div class="url-link">
                         <a-input placeholder="url链接" v-model="url"/>
@@ -29,6 +30,7 @@
                 </div>
                 <div class="action-item">
                     <p class="title">其他操作</p>
+                    <a-button type="primary" @click="_backToTop">回到顶部</a-button>
                 </div>
             </div>
 
@@ -72,14 +74,17 @@
             _onClose() {
                 this.$emit('drawerEvent', 'close');
             },
-            _onConfirm(){
-                this.$emit('drawerEvent','confirm',{...this.dataProp,url:this.url,remark:this.remark})
+            _onConfirm(other={}){
+                this.$emit('drawerEvent','confirm',{...this.dataProp,url:this.url,remark:this.remark,...other})
             },
             _onCancel(){
                 this.$emit('drawerEvent','cancel')
             },
             _delete(){
                 this.$emit('drawerEvent','delete',this.dataProp)
+            },
+            _backToTop(){
+                this._onConfirm({other:'backToTop',remark:'回到顶部'})
             }
         }
     }
