@@ -41,6 +41,11 @@ export function getHTML(imgList, zoneList, title = '') {
                             position:absolute;
                             opacity: 0;
                         }
+                        a,button,input,textarea,label,i,em{/*highlight*/
+                            -webkit-tap-highlight-color: rgba(255,0,0,0);
+                            border: 0;
+                            -webkit-appearance: none;
+                        }
                     </style>
                 </head>
                 <body>
