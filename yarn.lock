@@ -38,18 +38,6 @@
     esutils "^2.0.2"
     js-tokens "^4.0.0"
 
-"@better-scroll/core@^2.0.0-beta.2":
-  version "2.0.0-beta.2"
-  resolved "https://registry.yarnpkg.com/@better-scroll/core/-/core-2.0.0-beta.2.tgz#72c4da63a543671ef7b19c97c3d86b226643b65e"
-  integrity sha512-+gkRJ+5fnkl6y6rA8MB0D3vzLlvKuAlJwY6+oTB5xVYMx5qj4fa0/ZuIteBt4rSnT4GkKe8X3ejb+/wgh7aAJA==
-  dependencies:
-    "@better-scroll/shared-utils" "^2.0.0-beta.2"
-
-"@better-scroll/shared-utils@^2.0.0-beta.2":
-  version "2.0.0-beta.2"
-  resolved "https://registry.yarnpkg.com/@better-scroll/shared-utils/-/shared-utils-2.0.0-beta.2.tgz#1714d5e46eb47f03ce293f620672e84d5cdb6ca9"
-  integrity sha512-iJT5krGpE3L5ZS6TYo5xqjpxbR3gub3cCD2cmgvFdCiKwXxqeTZdldt4/OCNxk2qwvYfv9ojyqzv7ENCxziLiA==
-
 "@hapi/address@2.x.x":
   version "2.1.2"
   resolved "https://registry.npm.taobao.org/@hapi/address/download/@hapi/address-2.1.2.tgz#1c794cd6dbf2354d1eb1ef10e0303f573e1c7222"
@@ -5799,9 +5787,9 @@ shebang-regex@^3.0.0:
   integrity sha1-rhbxZE2HPsrYQ7AwexQzYtTEIXI=
 
 shell-quote@^1.6.1:
-  version "1.7.2"
-  resolved "https://registry.npm.taobao.org/shell-quote/download/shell-quote-1.7.2.tgz#67a7d02c76c9da24f99d20808fcaded0e0e04be2"
-  integrity sha1-Z6fQLHbJ2iT5nSCAj8re0ODgS+I=
+  version "1.7.3"
+  resolved "https://registry.yarnpkg.com/shell-quote/-/shell-quote-1.7.3.tgz#aa40edac170445b9a431e17bb62c0b881b9c4123"
+  integrity sha512-Vpfqwm4EnqGdlsBFNmHhxhElJYrdfcxPThu+ryKS5J8L/fhAwLazFZtq+S+TWZ9ANj2piSQLGj6NQg+lKPmxrw==
 
 signal-exit@^3.0.0, signal-exit@^3.0.2:
   version "3.0.2"
